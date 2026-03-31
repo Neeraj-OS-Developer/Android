@@ -2,26 +2,26 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#000000">
+    android:background="#000000"
+    android:padding="20dp">
 
-    <!-- Container for the LibGDX GLSurfaceView (added programmatically) -->
-    <FrameLayout
-        android:id="@+id/gdx_container"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
-
-    <!-- Optional debug overlay (hidden by default) -->
     <TextView
-        android:id="@+id/debug_text"
+        android:id="@+id/statusText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentEnd="true"
-        android:layout_margin="8dp"
-        android:background="#88000000"
-        android:padding="8dp"
-        android:textColor="#FFFFFF"
-        android:textSize="12sp"
-        android:visibility="gone" />
+        android:text="SYSTEM ONLINE\nWAITING FOR LOGIC..."
+        android:textColor="#00FF00"
+        android:fontFamily="monospace"
+        android:textSize="18sp"
+        android:layout_centerInParent="true"
+        android:gravity="center"/>
 
+    <Button
+        android:id="@+id/runBtn"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:text="EXECUTE BRAIN EDIT"
+        android:backgroundTint="#00FF00"
+        android:textColor="#000000" />
 </RelativeLayout>
