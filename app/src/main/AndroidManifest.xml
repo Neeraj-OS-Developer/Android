@@ -4,6 +4,7 @@
 
     <application
         android:label="AI Logic System"
+        android:icon="@mipmap/profile_icon"
         android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"> 
         <activity
             android:name=".MainActivity"
