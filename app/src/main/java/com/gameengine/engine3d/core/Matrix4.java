@@ -7,6 +7,10 @@ public class Matrix4 {
         identity();
     }
 
+    public Matrix4(float[] data) {
+        System.arraycopy(data, 0, this.data, 0, 16);
+    }
+
     public void identity() {
         for (int i = 0; i < 16; i++) {
             data[i] = 0f;
@@ -80,6 +84,20 @@ public class Matrix4 {
         float x = data[0] * point.x + data[4] * point.y + data[8] * point.z + data[12];
         float y = data[1] * point.x + data[5] * point.y + data[9] * point.z + data[13];
         float z = data[2] * point.x + data[6] * point.y + data[10] * point.z + data[14];
+        float w = data[3] * point.x + data[7] * point.y + data[11] * point.z + data[15];
+        if (w != 0) return new Vector3(x / w, y / w, z / w);
         return new Vector3(x, y, z);
+    }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                sb.append(String.format("%.2f ", data[i * 4 + j]));
+            }
+            sb.append("\n");
+        }
+        return sb.toString();
     }
 }

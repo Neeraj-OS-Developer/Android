@@ -8,24 +8,27 @@ public class Transform {
     private Matrix4 modelMatrix;
     private boolean isDirty = true;
 
-    public Transform() {}
+    public Transform() {
+        updateMatrix();
+    }
 
     public Transform(Vector3 position) {
-        this.position = position;
+        this.position = new Vector3(position);
+        updateMatrix();
     }
 
     public void setPosition(Vector3 pos) {
-        this.position = pos;
+        this.position = new Vector3(pos);
         isDirty = true;
     }
 
     public void setRotation(Vector3 rot) {
-        this.rotation = rot;
+        this.rotation = new Vector3(rot);
         isDirty = true;
     }
 
     public void setScale(Vector3 scl) {
-        this.scale = scl;
+        this.scale = new Vector3(scl);
         isDirty = true;
     }
 
@@ -41,16 +44,19 @@ public class Transform {
 
     public Matrix4 getModelMatrix() {
         if (isDirty) {
-            modelMatrix = new Matrix4();
-            Matrix4 trans = Matrix4.translation(position);
-            Matrix4 rotX = Matrix4.rotationX(rotation.x);
-            Matrix4 rotY = Matrix4.rotationY(rotation.y);
-            Matrix4 rotZ = Matrix4.rotationZ(rotation.z);
-            Matrix4 scl = Matrix4.scale(scale);
-
-            modelMatrix = Matrix4.multiply(trans, Matrix4.multiply(rotZ, Matrix4.multiply(rotY, Matrix4.multiply(rotX, scl))));
-            isDirty = false;
+            updateMatrix();
         }
         return modelMatrix;
+    }
+
+    private void updateMatrix() {
+        Matrix4 trans = Matrix4.translation(position);
+        Matrix4 rotX = Matrix4.rotationX(rotation.x);
+        Matrix4 rotY = Matrix4.rotationY(rotation.y);
+        Matrix4 rotZ = Matrix4.rotationZ(rotation.z);
+        Matrix4 scl = Matrix4.scale(scale);
+
+        modelMatrix = Matrix4.multiply(trans, Matrix4.multiply(rotZ, Matrix4.multiply(rotY, Matrix4.multiply(rotX, scl))));
+        isDirty = false;
     }
 }

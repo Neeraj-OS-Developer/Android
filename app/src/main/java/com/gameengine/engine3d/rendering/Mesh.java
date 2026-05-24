@@ -7,6 +7,7 @@ import com.gameengine.engine3d.core.Vector3;
 public class Mesh {
     public List<Vertex> vertices = new ArrayList<>();
     public List<Integer> indices = new ArrayList<>();
+    public List<Integer> colors = new ArrayList<>();
 
     public Mesh() {}
 
@@ -18,17 +19,24 @@ public class Mesh {
         indices.add(index);
     }
 
+    public void addColor(int color) {
+        colors.add(color);
+    }
+
     public static Mesh createCube(float size) {
         Mesh mesh = new Mesh();
         float half = size / 2f;
+        int[] cubeColors = {
+            0xFFFF6B6B, 0xFF4ECDC4, 0xFFFFE66D, 0xFF95E1D3, 0xFFC7CEEA, 0xFFB5EAD7
+        };
 
-        // Front face
+        // Front face (red)
         mesh.addVertex(new Vertex(-half, -half, half));
         mesh.addVertex(new Vertex(half, -half, half));
         mesh.addVertex(new Vertex(half, half, half));
         mesh.addVertex(new Vertex(-half, half, half));
 
-        // Back face
+        // Back face (cyan)
         mesh.addVertex(new Vertex(-half, -half, -half));
         mesh.addVertex(new Vertex(half, -half, -half));
         mesh.addVertex(new Vertex(half, half, -half));
@@ -97,7 +105,7 @@ public class Mesh {
         // Apex
         mesh.addVertex(new Vertex(0, size, 0));
 
-        // Base
+        // Base (yellow)
         mesh.addIndex(0);
         mesh.addIndex(2);
         mesh.addIndex(1);
@@ -124,11 +132,12 @@ public class Mesh {
 
     public static Mesh createSphere(float radius, int segments) {
         Mesh mesh = new Mesh();
+        float PI = (float) Math.PI;
 
         for (int i = 0; i <= segments; i++) {
-            float lat = (float) (Math.PI * i / segments);
+            float lat = PI * i / segments;
             for (int j = 0; j <= segments; j++) {
-                float lon = (float) (2 * Math.PI * j / segments);
+                float lon = 2 * PI * j / segments;
                 float x = (float) (radius * Math.sin(lat) * Math.cos(lon));
                 float y = (float) (radius * Math.cos(lat));
                 float z = (float) (radius * Math.sin(lat) * Math.sin(lon));
@@ -148,6 +157,26 @@ public class Mesh {
                 mesh.addIndex(a + 1);
             }
         }
+
+        return mesh;
+    }
+
+    public static Mesh createPlane(float width, float height) {
+        Mesh mesh = new Mesh();
+        float hw = width / 2f;
+        float hh = height / 2f;
+
+        mesh.addVertex(new Vertex(-hw, 0, -hh));
+        mesh.addVertex(new Vertex(hw, 0, -hh));
+        mesh.addVertex(new Vertex(hw, 0, hh));
+        mesh.addVertex(new Vertex(-hw, 0, hh));
+
+        mesh.addIndex(0);
+        mesh.addIndex(1);
+        mesh.addIndex(2);
+        mesh.addIndex(2);
+        mesh.addIndex(3);
+        mesh.addIndex(0);
 
         return mesh;
     }

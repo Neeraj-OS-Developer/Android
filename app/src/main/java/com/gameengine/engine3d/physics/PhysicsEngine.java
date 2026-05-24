@@ -8,11 +8,15 @@ import com.gameengine.engine3d.gameobject.GameObject;
 public class PhysicsEngine {
     private List<GameObject> gameObjects = new ArrayList<>();
     private Vector3 gravity = new Vector3(0, -9.81f, 0);
-    private float fixedDeltaTime = 0.016f; // 60 FPS
+    private static final float FIXED_DELTA_TIME = 0.016f;
     private int solverIterations = 4;
 
+    public PhysicsEngine() {}
+
     public void addGameObject(GameObject gameObject) {
-        gameObjects.add(gameObject);
+        if (!gameObjects.contains(gameObject)) {
+            gameObjects.add(gameObject);
+        }
     }
 
     public void removeGameObject(GameObject gameObject) {
@@ -20,19 +24,22 @@ public class PhysicsEngine {
     }
 
     public void setGravity(Vector3 gravity) {
-        this.gravity = gravity;
+        this.gravity = new Vector3(gravity);
     }
 
     public void update(float deltaTime) {
-        // Update rigid bodies
         for (GameObject obj : gameObjects) {
             if (obj.rigidBody != null && !obj.rigidBody.isKinematic) {
-                obj.rigidBody.update(fixedDeltaTime);
-                obj.transform.translate(obj.rigidBody.velocity.multiply(fixedDeltaTime));
+                obj.rigidBody.update(FIXED_DELTA_TIME);
+                Vector3 displacement = obj.rigidBody.getVelocity().multiply(FIXED_DELTA_TIME);
+                obj.transform.translate(displacement);
+                
+                if (obj.collider != null) {
+                    obj.collider.offset = new Vector3(obj.transform.position);
+                }
             }
         }
 
-        // Collision detection and response
         for (int i = 0; i < solverIterations; i++) {
             detectAndResolveCollisions();
         }
@@ -56,10 +63,14 @@ public class PhysicsEngine {
     private void resolveCollision(GameObject objA, GameObject objB) {
         if (objA.collider.isTrigger || objB.collider.isTrigger) return;
 
-        Vector3 normal = objB.transform.position.subtract(objA.transform.position).normalize();
+        Vector3 normal = objB.transform.position.subtract(objA.transform.position);
+        float dist = normal.magnitude();
+        if (dist < 0.001f) normal = new Vector3(0, 1, 0);
+        else normal = normal.normalize();
         
-        if (objA.rigidBody != null && objB.rigidBody != null) {
-            float restitution = 0.8f; // Bounce
+        if (objA.rigidBody != null && !objA.rigidBody.isKinematic && 
+            objB.rigidBody != null && !objB.rigidBody.isKinematic) {
+            
             Vector3 relativeVel = objB.rigidBody.velocity.subtract(objA.rigidBody.velocity);
             float velAlongNormal = relativeVel.dot(normal);
 
@@ -67,10 +78,15 @@ public class PhysicsEngine {
                 float totalMass = objA.rigidBody.mass + objB.rigidBody.mass;
                 float aRatio = objB.rigidBody.mass / totalMass;
                 float bRatio = objA.rigidBody.mass / totalMass;
+                float restitution = Math.min(objA.rigidBody.restitution, objB.rigidBody.restitution);
 
                 objA.rigidBody.velocity = objA.rigidBody.velocity.subtract(normal.multiply(velAlongNormal * aRatio * (1 + restitution)));
                 objB.rigidBody.velocity = objB.rigidBody.velocity.add(normal.multiply(velAlongNormal * bRatio * (1 + restitution)));
             }
+        } else if (objA.rigidBody != null && !objA.rigidBody.isKinematic) {
+            objA.rigidBody.velocity = objA.rigidBody.velocity.subtract(normal.multiply(2 * objA.rigidBody.velocity.dot(normal)));
+        } else if (objB.rigidBody != null && !objB.rigidBody.isKinematic) {
+            objB.rigidBody.velocity = objB.rigidBody.velocity.subtract(normal.multiply(2 * objB.rigidBody.velocity.dot(normal)));
         }
     }
 }

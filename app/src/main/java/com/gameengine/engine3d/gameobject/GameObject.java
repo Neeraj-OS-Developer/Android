@@ -22,7 +22,7 @@ public class GameObject {
     }
 
     public void addComponent(GameComponent component) {
-        if (componentCount < components.length) {
+        if (componentCount < components.length && component != null) {
             components[componentCount] = component;
             component.gameObject = this;
             componentCount++;

@@ -8,8 +8,8 @@ public class Vertex {
     public int color;
 
     public Vertex(Vector3 position, Vector3 normal, int color) {
-        this.position = position;
-        this.normal = normal;
+        this.position = new Vector3(position);
+        this.normal = new Vector3(normal);
         this.color = color;
     }
 
@@ -17,5 +17,11 @@ public class Vertex {
         this.position = new Vector3(x, y, z);
         this.normal = new Vector3(0, 1, 0);
         this.color = 0xFFFFFFFF;
+    }
+
+    public Vertex(Vertex other) {
+        this.position = new Vector3(other.position);
+        this.normal = new Vector3(other.normal);
+        this.color = other.color;
     }
 }

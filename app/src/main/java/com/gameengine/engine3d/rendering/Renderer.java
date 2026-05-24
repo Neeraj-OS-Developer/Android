@@ -6,6 +6,8 @@ import android.graphics.Path;
 import com.gameengine.engine3d.core.Matrix4;
 import com.gameengine.engine3d.core.Vector3;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 public class Renderer {
@@ -14,15 +16,13 @@ public class Renderer {
     private int screenWidth;
     private int screenHeight;
 
-    // Camera properties
-    private Vector3 cameraPosition = new Vector3(0, 5, 10);
-    private Vector3 cameraTarget = new Vector3(0, 0, 0);
+    private Vector3 cameraPosition = new Vector3(0, 5, 15);
+    private Vector3 cameraTarget = new Vector3(0, 2, 0);
     private float fov = 45f;
     private float nearPlane = 0.1f;
     private float farPlane = 1000f;
 
-    // Light properties
-    private Vector3 lightDirection = new Vector3(1, 1, 1).normalize();
+    private Vector3 lightDirection = new Vector3(1, 2, 1).normalize();
     private int ambientLight = 0xFF444444;
 
     public Renderer(Canvas canvas, int screenWidth, int screenHeight) {
@@ -31,14 +31,15 @@ public class Renderer {
         this.screenHeight = screenHeight;
         this.paint = new Paint();
         this.paint.setAntiAlias(true);
+        this.paint.setFilterBitmap(true);
     }
 
     public void setCameraPosition(Vector3 pos) {
-        this.cameraPosition = pos;
+        this.cameraPosition = new Vector3(pos);
     }
 
     public void setCameraTarget(Vector3 target) {
-        this.cameraTarget = target;
+        this.cameraTarget = new Vector3(target);
     }
 
     public void setLightDirection(Vector3 dir) {
@@ -48,19 +49,16 @@ public class Renderer {
     public void renderMesh(Mesh mesh, Matrix4 modelMatrix) {
         if (mesh == null || canvas == null) return;
 
+        List<ProjectedTriangle> triangles = new ArrayList<>();
         List<ProjectedVertex> projectedVertices = new ArrayList<>();
 
-        // Project vertices
         for (Vertex vertex : mesh.vertices) {
             Vector3 worldPos = modelMatrix.transformPoint(vertex.position);
             Vector3 screenPos = projectVertex(worldPos);
-            
-            // Calculate lighting
-            int color = calculateLighting(vertex, modelMatrix);
-            projectedVertices.add(new ProjectedVertex(screenPos, color));
+            int color = calculateLighting(vertex);
+            projectedVertices.add(new ProjectedVertex(screenPos, color, worldPos.z));
         }
 
-        // Draw triangles
         for (int i = 0; i < mesh.indices.size(); i += 3) {
             int idx0 = mesh.indices.get(i);
             int idx1 = mesh.indices.get(i + 1);
@@ -71,35 +69,44 @@ public class Renderer {
                 ProjectedVertex v1 = projectedVertices.get(idx1);
                 ProjectedVertex v2 = projectedVertices.get(idx2);
 
-                // Back-face culling
-                if (isBackFace(v0, v1, v2)) continue;
-
-                drawTriangle(v0, v1, v2);
+                if (!isBackFace(v0, v1, v2)) {
+                    float avgZ = (v0.depth + v1.depth + v2.depth) / 3f;
+                    triangles.add(new ProjectedTriangle(v0, v1, v2, avgZ));
+                }
             }
+        }
+
+        Collections.sort(triangles, new Comparator<ProjectedTriangle>() {
+            @Override
+            public int compare(ProjectedTriangle a, ProjectedTriangle b) {
+                return Float.compare(a.avgDepth, b.avgDepth);
+            }
+        });
+
+        for (ProjectedTriangle tri : triangles) {
+            drawTriangle(tri.v0, tri.v1, tri.v2);
         }
     }
 
     private Vector3 projectVertex(Vector3 worldPos) {
-        // Simple perspective projection
-        float distance = worldPos.z;
-        if (distance <= 0) distance = 0.1f;
+        Vector3 relPos = worldPos.subtract(cameraPosition);
+        float distance = relPos.magnitude();
+        if (distance <= 0.1f) distance = 0.1f;
 
         float scale = (screenHeight / 2f) / (float) Math.tan(Math.toRadians(fov / 2f));
-        
-        float screenX = (worldPos.x / distance) * scale + (screenWidth / 2f);
-        float screenY = (worldPos.y / distance) * scale + (screenHeight / 2f);
-        float screenZ = distance;
+        float screenX = (relPos.x / Math.max(relPos.z, 0.1f)) * scale + (screenWidth / 2f);
+        float screenY = (relPos.y / Math.max(relPos.z, 0.1f)) * scale + (screenHeight / 2f);
 
-        return new Vector3(screenX, screenY, screenZ);
+        return new Vector3(screenX, screenY, distance);
     }
 
-    private int calculateLighting(Vertex vertex, Matrix4 modelMatrix) {
+    private int calculateLighting(Vertex vertex) {
         Vector3 normal = vertex.normal;
-        float light = Math.max(0.3f, normal.dot(lightDirection));
+        float light = Math.max(0.4f, Math.abs(normal.dot(lightDirection)));
         
-        int r = (int) (255 * light);
-        int g = (int) (255 * light);
-        int b = (int) (255 * light);
+        int r = Math.min(255, (int) (((vertex.color >> 16) & 0xFF) * light));
+        int g = Math.min(255, (int) (((vertex.color >> 8) & 0xFF) * light));
+        int b = Math.min(255, (int) ((vertex.color & 0xFF) * light));
 
         return 0xFF000000 | (r << 16) | (g << 8) | b;
     }
@@ -111,34 +118,51 @@ public class Renderer {
     }
 
     private void drawTriangle(ProjectedVertex v0, ProjectedVertex v1, ProjectedVertex v2) {
-        Path path = new Path();
-        path.moveTo(v0.position.x, v0.position.y);
-        path.lineTo(v1.position.x, v1.position.y);
-        path.lineTo(v2.position.x, v2.position.y);
-        path.close();
+        try {
+            Path path = new Path();
+            path.moveTo(v0.position.x, v0.position.y);
+            path.lineTo(v1.position.x, v1.position.y);
+            path.lineTo(v2.position.x, v2.position.y);
+            path.close();
 
-        paint.setColor(v0.color);
-        paint.setStyle(Paint.Style.FILL);
-        canvas.drawPath(path, paint);
+            paint.setColor(v0.color);
+            paint.setStyle(Paint.Style.FILL);
+            canvas.drawPath(path, paint);
 
-        paint.setColor(0xFF000000);
-        paint.setStyle(Paint.Style.STROKE);
-        paint.setStrokeWidth(1f);
-        canvas.drawPath(path, paint);
+            paint.setColor(0xFF222222);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(0.5f);
+            canvas.drawPath(path, paint);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public void clear(int color) {
         canvas.drawColor(color);
     }
 
-    // Helper class for projected vertices
     private static class ProjectedVertex {
         Vector3 position;
         int color;
+        float depth;
 
-        ProjectedVertex(Vector3 pos, int col) {
+        ProjectedVertex(Vector3 pos, int col, float d) {
             this.position = pos;
             this.color = col;
+            this.depth = d;
+        }
+    }
+
+    private static class ProjectedTriangle {
+        ProjectedVertex v0, v1, v2;
+        float avgDepth;
+
+        ProjectedTriangle(ProjectedVertex v0, ProjectedVertex v1, ProjectedVertex v2, float avgDepth) {
+            this.v0 = v0;
+            this.v1 = v1;
+            this.v2 = v2;
+            this.avgDepth = avgDepth;
         }
     }
 }

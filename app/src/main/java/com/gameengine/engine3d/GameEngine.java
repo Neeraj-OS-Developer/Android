@@ -13,22 +13,32 @@ public class GameEngine {
     private Renderer renderer;
     private boolean isRunning = false;
     private long lastUpdateTime = 0;
-    private float deltaTime = 0;
+    private float deltaTime = 0f;
+    private int fps = 0;
+    private int frameCount = 0;
+    private long lastFpsTime = 0;
 
     public GameEngine(Canvas canvas, int screenWidth, int screenHeight) {
         this.renderer = new Renderer(canvas, screenWidth, screenHeight);
         this.physicsEngine = new PhysicsEngine();
+        this.lastFpsTime = System.currentTimeMillis();
     }
 
     public void addGameObject(GameObject gameObject) {
-        gameObjects.add(gameObject);
-        physicsEngine.addGameObject(gameObject);
-        gameObject.start();
+        if (gameObject != null && !gameObjects.contains(gameObject)) {
+            gameObjects.add(gameObject);
+            if (physicsEngine != null) {
+                physicsEngine.addGameObject(gameObject);
+            }
+            gameObject.start();
+        }
     }
 
     public void removeGameObject(GameObject gameObject) {
         gameObjects.remove(gameObject);
-        physicsEngine.removeGameObject(gameObject);
+        if (physicsEngine != null) {
+            physicsEngine.removeGameObject(gameObject);
+        }
         gameObject.destroy();
     }
 
@@ -42,31 +52,39 @@ public class GameEngine {
     }
 
     public void update(Canvas canvas) {
-        if (!isRunning) return;
+        if (!isRunning || canvas == null) return;
 
-        // Calculate delta time
-        long currentTime = System.currentTimeMillis();
-        deltaTime = (currentTime - lastUpdateTime) / 1000f;
-        lastUpdateTime = currentTime;
+        try {
+            long currentTime = System.currentTimeMillis();
+            deltaTime = Math.min((currentTime - lastUpdateTime) / 1000f, 0.033f);
+            lastUpdateTime = currentTime;
 
-        // Clear screen
-        renderer.clear(0xFF1a1a1a);
+            renderer.clear(0xFF1a1a1a);
 
-        // Update physics
-        physicsEngine.update(deltaTime);
-
-        // Update game objects
-        for (GameObject obj : gameObjects) {
-            if (obj.active) {
-                obj.update(deltaTime);
+            if (physicsEngine != null) {
+                physicsEngine.update(deltaTime);
             }
-        }
 
-        // Render game objects
-        for (GameObject obj : gameObjects) {
-            if (obj.active && obj.mesh != null) {
-                renderer.renderMesh(obj.mesh, obj.transform.getModelMatrix());
+            for (GameObject obj : gameObjects) {
+                if (obj.active) {
+                    obj.update(deltaTime);
+                }
             }
+
+            for (GameObject obj : gameObjects) {
+                if (obj.active && obj.mesh != null) {
+                    renderer.renderMesh(obj.mesh, obj.transform.getModelMatrix());
+                }
+            }
+
+            frameCount++;
+            if (currentTime - lastFpsTime >= 1000) {
+                fps = frameCount;
+                frameCount = 0;
+                lastFpsTime = currentTime;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
@@ -80,5 +98,9 @@ public class GameEngine {
 
     public float getDeltaTime() {
         return deltaTime;
+    }
+
+    public int getFPS() {
+        return fps;
     }
 }
